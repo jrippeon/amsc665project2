@@ -64,5 +64,34 @@ def dV_mueller(x, gamma=GAMMA, k=K, sigma=SIGMA):
 #                              Euler Maruyama                                  #
 ################################################################################
 
-def _euler_maruyama_step():
-    return
+def _euler_maruyama_step(t, x, a, b, dt):
+    '''
+    One Euler-Maruyama step on the SDE
+
+    dx = a(t, x) dt + b(t, x) dw
+
+    with timestep dt
+    '''
+    x= np.asarray(x, dtype=float)
+    w= np.random.normal(0, dt, x.shape)
+    x_next= x + a(t, x) * dt + b(t, x) * w
+    return x_next
+
+def euler_maruyama(t0, x0, a, b, dt, T):
+    '''
+    Run an Euler-Maruyama simulation of the SDE
+
+    dx = a(t, x) dt + b(t, x) dw
+
+    on time [t0, T] starting from x0, with timestep dt
+    '''
+    x0= np.asarray(x0, dtype=float)
+    dim= x0.shape
+    t= np.arange(t0, T, dt)
+    N_steps= t.shape[0]
+    x= np.zeros((N_steps,) + dim)
+    x[0]= x0
+    for n in range(N_steps-1):
+        x[n+1]= _euler_maruyama_step(t[n], x[n], a, b, dt)
+
+    return t, x
