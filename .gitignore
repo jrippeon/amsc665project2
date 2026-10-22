@@ -1,0 +1,22 @@
+# Python
+.venv/
+__pycache__/
+
+# reference materials needn't be tracked
+reference/
+
+# LaTeX build files
+*.aux
+*.log
+*.fls
+*.fdb_latexmk
+*.nav
+*.out
+*.snm
+*.toc
+*.synctex.gz
+
+*.pdf
+
+# Claude Code settings and local state (CLAUDE.md files are still tracked)
+.claude/
