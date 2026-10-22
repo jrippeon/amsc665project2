@@ -73,11 +73,11 @@ def _euler_maruyama_step(t, x, a, b, dt):
     with timestep dt
     '''
     x= np.asarray(x, dtype=float)
-    w= np.random.normal(0, dt, x.shape)
+    w= np.random.normal(0, np.sqrt(dt), x.shape)
     x_next= x + a(t, x) * dt + b(t, x) * w
     return x_next
 
-def euler_maruyama(t0, x0, a, b, dt, T):
+def euler_maruyama(t0, x0, a, b, dt, T=None, N_steps=None):
     '''
     Run an Euler-Maruyama simulation of the SDE
 
@@ -87,11 +87,109 @@ def euler_maruyama(t0, x0, a, b, dt, T):
     '''
     x0= np.asarray(x0, dtype=float)
     dim= x0.shape
-    t= np.arange(t0, T, dt)
-    N_steps= t.shape[0]
+
+    if T is not None and N_steps is None:
+        t= np.arange(t0, T, dt)
+        N_steps= t.shape[0]
+    elif T is None and N_steps is not None:
+        # t= np.arange(t0, t0+N_steps*dt, dt)
+        t= t0 + dt * np.arange(N_steps)
+    else:
+        raise TypeError('Exactly one of T and N_steps must be provided.')
+
     x= np.zeros((N_steps,) + dim)
     x[0]= x0
     for n in range(N_steps-1):
         x[n+1]= _euler_maruyama_step(t[n], x[n], a, b, dt)
 
     return t, x
+
+################################################################################
+#                               Metadynamics                                   #
+################################################################################
+
+# parameters used in Yuan 2023 for the rugged Mueller problem
+DEFAULT_PARAMS= dict(
+    Nskip= 500,
+    Nbumps= 2000,
+    bump_height= 5,
+    bump_width= 0.05, 
+    h= 1e-5,
+    beta= 0.1
+)
+    
+
+
+def _V_bumps(V, x,  x_bumps, params=DEFAULT_PARAMS):
+    '''
+    x_bumps is (k, ... ) for k bumps in dimension (...)
+    '''
+    bump_height= params['bump_height']
+    bump_width= params['bump_width']
+
+    diffs= x[None,:] - x_bumps
+    bumps= bump_height * np.exp(-np.sum(diffs**2, axis=-1) / (2 * bump_width**2))
+    return V(x) + np.sum(bumps, axis=0)
+
+def _dV_bumps(dV, x,  x_bumps, params=DEFAULT_PARAMS):
+    '''
+    x_bumps is (k, ... ) for k bumps in dimension (...)
+    '''
+    bump_height= params['bump_height']
+    bump_width= params['bump_width']
+
+    # bumps= bump_height / bump_width**2 * np.exp(-np.abs(x[None,...] - x_bumps)**2 / (2 * bump_width**2)) * (x[None, ...] - x_bumps)
+    diffs= x[None,:] - x_bumps
+    norm_diffs_squared= np.sum(diffs**2, axis=-1)
+    bumps= -bump_height/ bump_width**2 * np.exp(-norm_diffs_squared[:,None] / (2 * bump_width**2)) * diffs
+    return dV(x) + np.sum(bumps, axis=0)
+
+
+
+def metadynamics_sample(*, dV, x0=None, d=None, **param_overrides):
+    '''
+    Take a sample of N = Nskip * Nbumps points using the metadynamics algorithm.
+
+    Returns (N, d)  array of points in R^d.
+    '''
+    params= DEFAULT_PARAMS | param_overrides
+    Nskip= params['Nskip']
+    Nbumps= params['Nbumps']
+    # bump_height= params['bump_height']
+    # bump_width= params['bump_width']
+    h= params['h']
+    beta= params['beta']
+
+    if (x0 is None) and (d is None):
+        raise TypeError('Exactly one of x0 and d must be provided (or we can\'t determine the dimesions of x)')
+    elif x0 is not None:
+        x0= np.asarray(x0, dtype=float)
+        d= x0.shape[-1]
+    elif d is not None:
+        x0= np.zeros(d)
+
+    N= Nskip * Nbumps
+    x= np.zeros((N,d))
+    x_bumps= np.zeros((Nbumps, d))
+    x[0]= x0
+
+    b_langevin= lambda t, x: np.sqrt(2 / beta)
+
+    for k in range(Nbumps):
+
+        if k % 10 == 0:
+            print(f'{k=}')
+
+        a_langevin= lambda t, x: -_dV_bumps(dV=dV, x=x, x_bumps=x_bumps[:k], params=params)
+
+        # for the zeroth we do nothing
+        if k > 0:
+            x0= x[k*Nskip-1]
+
+        # we don't care about time at all for this sampling method
+        _, new_xs= euler_maruyama(t0=0, x0=x0, a=a_langevin, b=b_langevin, dt=h, N_steps=Nskip+1)
+        # the first step is x0, we discard it
+        x[k*Nskip:(k+1)*Nskip]= new_xs[1:]
+        x_bumps[k]= new_xs[-1]
+
+    return x
