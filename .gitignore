@@ -16,6 +16,12 @@ reference/
 *.toc
 *.synctex.gz
 
+# bibliography stuff
+*.bbl
+*.bcf
+*.blg
+*.run.xml
+
 *.pdf
 
 # Claude Code settings and local state (CLAUDE.md files are still tracked)
