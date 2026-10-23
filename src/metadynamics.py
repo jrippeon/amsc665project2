@@ -119,36 +119,32 @@ DEFAULT_PARAMS= dict(
 )
     
 
+def V_G_mueller(x, x_bump, bump_width=DEFAULT_PARAMS['bump_width'], bump_height=DEFAULT_PARAMS['bump_height']):
+    # in the Mueller potential only the first two coordinates are used as "collective variables"
+    diff= x[...,:2] - x_bump[...,:2]
+    bump= bump_height * np.exp(-np.sum(diff**2, axis=-1) / (2 * bump_width**2))
+    return bump
 
-def _V_bumps(V, x,  x_bumps, params=DEFAULT_PARAMS):
+def dV_G_mueller(x, x_bump, bump_width=DEFAULT_PARAMS['bump_width'], bump_height=DEFAULT_PARAMS['bump_height']):
+    # (..., 2)
+    diff= x[...,:2] - x_bump[...,:2]
+    # (...)
+    g= -bump_height / bump_width**2 * np.exp(-np.sum(diff**2, axis=-1) / (2 * bump_width**2))
+    #         (..., 1)   (..., 2) 
+    bump= g[..., None] * diff
+    # x and x_bump broadcast against each other (e.g. (..., 1, d) and (k, d) give (..., k, d)),
+    # so the output must have the broadcast shape rather than the shape of x
+    result= np.zeros(np.broadcast_shapes(x.shape, x_bump.shape))
+    result[..., :2]= bump
+    return result
+
+
+
+
+def metadynamics_sample(*, dV, dV_G, x0=None, d=None, **param_overrides):
     '''
-    x_bumps is (k, ... ) for k bumps in dimension (...)
-    '''
-    bump_height= params['bump_height']
-    bump_width= params['bump_width']
-
-    diffs= x[None,:] - x_bumps
-    bumps= bump_height * np.exp(-np.sum(diffs**2, axis=-1) / (2 * bump_width**2))
-    return V(x) + np.sum(bumps, axis=0)
-
-def _dV_bumps(dV, x,  x_bumps, params=DEFAULT_PARAMS):
-    '''
-    x_bumps is (k, ... ) for k bumps in dimension (...)
-    '''
-    bump_height= params['bump_height']
-    bump_width= params['bump_width']
-
-    # bumps= bump_height / bump_width**2 * np.exp(-np.abs(x[None,...] - x_bumps)**2 / (2 * bump_width**2)) * (x[None, ...] - x_bumps)
-    diffs= x[None,:] - x_bumps
-    norm_diffs_squared= np.sum(diffs**2, axis=-1)
-    bumps= -bump_height/ bump_width**2 * np.exp(-norm_diffs_squared[:,None] / (2 * bump_width**2)) * diffs
-    return dV(x) + np.sum(bumps, axis=0)
-
-
-
-def metadynamics_sample(*, dV, x0=None, d=None, **param_overrides):
-    '''
-    Take a sample of N = Nskip * Nbumps points using the metadynamics algorithm.
+    Take a sample of N = Nskip * Nbumps points from the potential well with gradient dV,
+    using the metadynamics algorithm with bump function dV_G.
 
     Returns (N, d)  array of points in R^d.
     '''
@@ -180,11 +176,17 @@ def metadynamics_sample(*, dV, x0=None, d=None, **param_overrides):
         if k % 10 == 0:
             print(f'{k=}')
 
-        a_langevin= lambda t, x: -_dV_bumps(dV=dV, x=x, x_bumps=x_bumps[:k], params=params)
 
-        # for the zeroth we do nothing
+        # for the zeroth we do nothing since we don't have any bumps yet
         if k > 0:
             x0= x[k*Nskip-1]
+            # x is (..., d), and x_bumps is (k, d), so this is (..., k, d)
+            # (recall broadcasting works right-to-left)
+            a_langevin= lambda t, x: -(dV(x) + np.sum(
+                dV_G(x=x[..., None, :], x_bump=x_bumps[:k, :], bump_width=params['bump_width'], bump_height=params['bump_height']),
+                axis=-2))
+        else:
+            a_langevin= lambda t, x: -dV(x)
 
         # we don't care about time at all for this sampling method
         _, new_xs= euler_maruyama(t0=0, x0=x0, a=a_langevin, b=b_langevin, dt=h, N_steps=Nskip+1)
