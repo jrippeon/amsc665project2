@@ -141,10 +141,9 @@ def dV_G_mueller(x, x_bump, bump_width=DEFAULT_PARAMS['bump_width'], bump_height
 
 
 
-def metadynamics_sample(*, dV, dV_G, x0=None, d=None, **param_overrides):
+def metadynamics_deposition(*, dV, dV_G, x0=None, d=None, **param_overrides):
     '''
-    Take a sample of N = Nskip * Nbumps points from the potential well with gradient dV,
-    using the metadynamics algorithm with bump function dV_G.
+    Perform the deposition phase of the metadynamics algorithm, placing Gaussians
 
     Returns (N, d)  array of points in R^d.
     '''
@@ -173,8 +172,8 @@ def metadynamics_sample(*, dV, dV_G, x0=None, d=None, **param_overrides):
 
     for k in range(Nbumps):
 
-        if k % 10 == 0:
-            print(f'{k=}')
+        if (100 * k) // Nbumps % 5 == 0:
+            print(f'{100*k//Nbumps}% \t {k=}')
 
 
         # for the zeroth we do nothing since we don't have any bumps yet
@@ -194,4 +193,4 @@ def metadynamics_sample(*, dV, dV_G, x0=None, d=None, **param_overrides):
         x[k*Nskip:(k+1)*Nskip]= new_xs[1:]
         x_bumps[k]= new_xs[-1]
 
-    return x
+    return x_bumps
