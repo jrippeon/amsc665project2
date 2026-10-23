@@ -17,6 +17,22 @@ GAMMA = 9.0
 K = 5.0
 SIGMA = 0.05
 
+# metastable sets A and B: cylinders of radius R around these points in (x1, x2)
+# (Yuan et al. 2023, Sec. 6.2, following Li et al. 2019 Sec. IV.A)
+CENTER_A = np.array([-0.558, 1.441])
+CENTER_B = np.array([0.623, 0.028])
+R = 0.1
+
+# metadynamics settings (Yuan et al. 2023 Sec. 6.1.1, "settings used in" Li et al. 2019 Sec. IV.A)
+PARAMS = dict(
+    Nskip= 500,
+    Nbumps= 2000,
+    bump_height= 5,
+    bump_width= 0.05,
+    h= 1e-5,
+    beta= 0.1,
+)
+
 
 def _mueller_terms(x):
     # x has shape (..., d); returns the offsets and the four exponential terms, each of shape (..., 4)
@@ -70,3 +86,13 @@ def dcv(x):
     '''
     d= x.shape[-1]
     return np.eye(d)[:, :2]
+def in_A(x):
+    '''
+    Mask of the points of x (..., d) in the set A. Returns (...).
+    '''
+    return np.linalg.norm(cv(x) - CENTER_A, axis=-1) < R
+def in_B(x):
+    '''
+    Mask of the points of x (..., d) in the set B. Returns (...).
+    '''
+    return np.linalg.norm(cv(x) - CENTER_B, axis=-1) < R
