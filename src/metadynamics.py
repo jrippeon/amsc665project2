@@ -4,45 +4,52 @@ import numpy as np
 #                              Euler Maruyama                                  #
 ################################################################################
 
-def _euler_maruyama_step(t, x, a, b, dt):
+def _euler_maruyama_step(t, x, a, b, dt, rng):
     '''
     One Euler-Maruyama step on the SDE
 
     dx = a(t, x) dt + b(t, x) dw
 
-    with timestep dt
+    with timestep dt, drawing the noise from the np.random.Generator rng
     '''
     x= np.asarray(x, dtype=float)
-    w= np.random.normal(0, np.sqrt(dt), x.shape)
+    w= rng.normal(0, np.sqrt(dt), x.shape)
     x_next= x + a(t, x) * dt + b(t, x) * w
     return x_next
 
-def euler_maruyama(t0, x0, a, b, dt, T=None, N_steps=None):
+def euler_maruyama(t0, x0, a, b, dt, T=None, N_steps=None, N_skip=1, *, rng):
     '''
     Run an Euler-Maruyama simulation of the SDE
 
     dx = a(t, x) dt + b(t, x) dw
 
-    on time [t0, T] starting from x0, with timestep dt
+    on time [t0, T] starting from x0, with timestep dt.
+    N_steps is the number of steps taken.
+    rng is an np.random.Generator, advanced in place.
+
+    Returns x0 followed by every N_skip'th state, N_steps // N_skip + 1 samples.
     '''
-    x0= np.asarray(x0, dtype=float)
+    x0= np.asarray(x0, dtype=float) # (...)
     dim= x0.shape
 
-    if T is not None and N_steps is None:
-        t= np.arange(t0, T, dt)
-        N_steps= t.shape[0]
-    elif T is None and N_steps is not None:
-        # t= np.arange(t0, t0+N_steps*dt, dt)
-        t= t0 + dt * np.arange(N_steps)
-    else:
+    if (T is None) == (N_steps is None):
         raise TypeError('Exactly one of T and N_steps must be provided.')
 
-    x= np.zeros((N_steps,) + dim)
-    x[0]= x0
-    for n in range(N_steps-1):
-        x[n+1]= _euler_maruyama_step(t[n], x[n], a, b, dt)
+    if T is not None:
+        N_steps= round((T-t0) / dt)
 
-    return t, x
+    N_samples= N_steps // N_skip + 1                  # x0, then every N_skip'th state
+    t_result= t0 + dt * N_skip * np.arange(N_samples)
+
+    x_result= np.zeros((N_samples,) + dim)
+    x_result[0]= x0
+    x_curr= x0
+    for n in range(N_steps):
+        x_curr= _euler_maruyama_step(t0 + n * dt, x_curr, a, b, dt, rng)
+        if (n + 1) % N_skip == 0:
+            x_result[(n + 1) // N_skip]= x_curr
+
+    return t_result, x_result
 
 ################################################################################
 #                               Metadynamics                                   #
@@ -89,7 +96,7 @@ def gaussian_bias_grad(*,x, x_centers, height, width, cv, dcv):
     return grad
 
 
-def metadynamics_deposition(*, dV, cv, dcv, x0=None, d=None, **param_overrides):
+def metadynamics_deposition(*, dV, cv, dcv, rng, x0=None, d=None, **param_overrides):
     '''
     Perform the deposition phase of the metadynamics algorithm, placing Gaussians
     in the space of the collective variables.
@@ -101,7 +108,9 @@ def metadynamics_deposition(*, dV, cv, dcv, x0=None, d=None, **param_overrides):
     cv should take (..., d) to (..., m),
     and dcv should take (..., d) to (..., d, m)
 
-    Returns (N, d)  array of points in R^d, where N = Nskip + Nbumps
+    rng is an np.random.Generator, advanced in place.
+
+    Returns (N, d)  array of points in R^d, where N = Nskip * Nbumps
     '''
     params= DEFAULT_PARAMS | param_overrides
     Nskip= params['Nskip']
@@ -128,7 +137,7 @@ def metadynamics_deposition(*, dV, cv, dcv, x0=None, d=None, **param_overrides):
 
     for k in range(Nbumps):
 
-        if k % (Nbumps // 20) == 0:
+        if k % max(1, Nbumps // 20) == 0:
             print(f'{100*k//Nbumps}% \t {k=}')
 
 
@@ -139,7 +148,7 @@ def metadynamics_deposition(*, dV, cv, dcv, x0=None, d=None, **param_overrides):
                                                              cv=cv,
                                                              dcv=dcv)
         # we don't care about time at all for this sampling method
-        _, new_xs= euler_maruyama(t0=0, x0=x0, a=a_langevin, b=b_langevin, dt=h, N_steps=Nskip+1)
+        _, new_xs= euler_maruyama(t0=0, x0=x0, a=a_langevin, b=b_langevin, dt=h, N_steps=Nskip, rng=rng)
         # the first step is x0, we discard it
         x[k*Nskip:(k+1)*Nskip]= new_xs[1:]
         x_centers[k]= new_xs[-1]
@@ -147,3 +156,46 @@ def metadynamics_deposition(*, dV, cv, dcv, x0=None, d=None, **param_overrides):
         x0= new_xs[-1]
 
     return x, x_centers
+
+def metadynamics_sampling(*, N_samples, N_skip, dV, x_centers, cv, dcv, x0, rng, N_walkers=1, **param_overrides):
+    '''
+    Run `N_walkers` Euler-Maruyama trajectories in the potential landscape defined by
+    V and bumps at `x_centers` with height `bump_height` and width `bump_width`.
+
+    x0 should be of shape (N_walkers, d) or (d,) (in which case all walkers start in the same place).
+    rng is an np.random.Generator, advanced in place.
+    '''
+    params= DEFAULT_PARAMS | param_overrides
+    bump_height= params['bump_height']
+    bump_width= params['bump_width']
+    h= params['h']
+    beta= params['beta']
+
+    x0= np.asarray(x0, dtype=float)
+    d= x0.shape[-1]
+    if x0.shape not in ((N_walkers, d), (d,)):
+        raise TypeError('x0 must be of shape (N_walkers, d) or (d,)')
+    x0= np.broadcast_to(x0, (N_walkers, d)).copy()                    # (N_walkers, d)
+
+    a= lambda t, x: -(dV(x) + gaussian_bias_grad(x=x, x_centers=x_centers, height=bump_height, width=bump_width, cv=cv, dcv=dcv))
+    b= lambda t, x: np.sqrt(2 / beta)
+    N_per_walker= -(-N_samples // N_walkers)                           # ceil
+    N_steps= N_skip * N_per_walker
+    _, x= euler_maruyama(0, x0, a, b, h, N_steps=N_steps, N_skip=N_skip, rng=rng)  # (N_per_walker + 1, N_walkers, d)
+
+    # drop x0, then trim the excess from rounding up
+    x_flat= x[1:].reshape(-1, d)[:N_samples]                          # (N_samples, d)
+
+    return x_flat
+
+def initialize_walkers(x_centers, N_walkers, *, rng):
+    '''
+    Distribute the initial walkers among the centers of the bumps.
+    This should lead to a reasonable distribution, with some in each basin.
+
+    x_centers is (k, d); returns (N_walkers, d). Centers are chosen without
+    replacement unless N_walkers > k.
+    '''
+    k= x_centers.shape[0]
+    idx= rng.choice(k, N_walkers, replace=N_walkers > k)              # (N_walkers,)
+    return x_centers[idx]
