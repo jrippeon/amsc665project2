@@ -199,3 +199,25 @@ def initialize_walkers(x_centers, N_walkers, *, rng):
     k= x_centers.shape[0]
     idx= rng.choice(k, N_walkers, replace=N_walkers > k)              # (N_walkers,)
     return x_centers[idx]
+
+def delta_net(x, delta):
+    '''
+    Given x of shape (n, d), perform the delta net algorithm to thin it.
+    Returns the mask of kept points.
+    '''
+    x= np.asarray(x, dtype=float)
+    n, d= x.shape
+
+    mask=np.ones(n, dtype=bool)
+
+    k=0
+    for k in range(n):
+        if k % max(1, n // 20) == 0:
+            print(f'{100*k//n}% \t {k=}')
+        if mask[k] == 0:
+            continue
+        dists= np.linalg.norm(x - x[k, :], axis=-1)
+        mask[dists < delta]= 0
+        mask[k]= 1
+
+    return mask
