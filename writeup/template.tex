@@ -221,6 +221,22 @@ sorting=ynt
 \tableofcontents
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Variational neural network for the committor problem.}
+
+Consider the overdamped Langevin dynamics
+\begin{equation}\label{eq:overdamped_langevin}
+  dx(t) = - \nabla V(x(t)) \, dt + \sqrt{2 \beta^{-1}} dw(t)
+\end{equation}
+and two disjoint sets \(A\) and \(B\) containing minima of \(V\).
+The committor \(q(x)\) is the probability that the process starting at \(x\)
+will reach \(B\) before \(A\).
+Of interest for solving with a neural network is the variational formulation,
+\(q\) is the minimizer of the functionl
+\begin{equation}\label{eq:committor_functional}
+  I[u] = \int_{\Omega_{AB}} e^{-\beta V(x)} \abs{\nabla u(x)}^2 \, dx
+\end{equation}
+over all \(u \in C^2(\Omega_{AB}) \cap C(\closure{\Omega_{AB}})\),
+satisfying boundary conditions \(u(\bdy A) = 0\), \(u(\bdy B) = 1\) \cite{face_nn_deltanet}.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Rugged Mueller potential}
 The rugged Mueller potential is a 10D variant of the Mueller potential, a common 2D test problem.
@@ -280,10 +296,8 @@ kjk
 
 \subsection{Euler-Maruyama simulation}
 In the metadynamics algorithm (as described in \cite{make_training_data_face}),
-the Euler-Maruyama algorithm is used to simulate overdamped Langevin dynamics, given by
-\begin{equation}\label{eq:overdamped_langevin}
-  dx(t) = - \nabla V(x(t)) \, dt + \sqrt{2 \beta^{-1}} dw(t)
-\end{equation}
+the Euler-Maruyama algorithm is used to simulate overdamped Langevin dynamics,
+given by \eqref{eq:overdamped_langevin}.
 An Euler-Maruyama step of length \(h\) is given by
 \begin{equation}\label{eq:overdamped_langevin_euler_maruyama}
   x_{n+1} = x_n - \nabla V(x_n) h + \sqrt{2 \beta^{-1}} w
@@ -296,10 +310,17 @@ as \texttt{euler\_maruyama()}.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \subsection{Metadynamics sampling}
+To train our neural network, we need a representative collection of points,
+which are sufficiently dense near the important features of our potential to capture the details of the committor.
+In a (relatively) high-dimensional problem such as this 10D Mueller, a grid will not suffice,
+so we use a sampling method informed by the dynamics.
+
+The metadynamics algorithm aims to slowly ``fill up'' the potential wells in our system until a region of interest is roughly flat,
+then sample randomly from this region.
+
 \subsubsection{Implementation}
-In the metadynamics sampling algorithm,
-we aim to sample points more uniformly than we would by simply running the dynamics forward in time.
-It consists of a deposition phase, and a sampling phase.
+The metadynamics sampling algorithm has two phases:
+a deposition phase, and a sampling phase.
 
 In the deposition phase (\texttt{metadynamics\_deposition()}),
 we send an Euler-Maruyama trajectory through the potential landscape,
@@ -380,7 +401,7 @@ This produced 62795 points, the first two coordinates of which are visualized in
   \label{tab:metadynamics_params}
 \end{table}
 
-\begin{figure}
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=0.9\textwidth]{figures/p1_sample_points.png}
   \caption{
@@ -389,6 +410,95 @@ This produced 62795 points, the first two coordinates of which are visualized in
     Contours of the potential function \(V\) are shown.
   }\label{fig:q1_sample_points}
 \end{figure}
+
+\subsection{Neural Network}
+
+\newcommand{\network}{\mathcal{N}}
+
+Now that we have sampled a representative collection of points,
+we can train a network to minimize \eqref{eq:committor_functional}.
+The loss function is a discrete approximation of this functional, given by
+\begin{equation}\label{eq:committor_loss}
+  \operatorname{Loss} = \frac{1}{K} \sum_{k=1}^K \abs{\nabla \network(x_k ; \theta)}^2 \frac{e^{- \beta V(x_x)}}{\rho(x_k)}
+\end{equation}
+where \(\rho(x_k)\) is the density of samples near \(x_k\).
+The sum over only training points is a reasonable approximation of the integral due to our sampling technique.
+The metadynamics method fills potential wells up to some (rather high) potential, then samples mostly from the area below that level.
+The areas which are rarely sampled by this method are those with \(V\) much higher than the ``floor'' of our flattened potential,
+so the \(e^{-\beta V(x)}\) term will be essentially zero in these locations.
+Because of the \(\delta\)-net refinement, we can assume samples are uniformly distributed and factor out the constant \(\rho\),
+giving the expression used in \texttt{loss\_fn()} in 
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/committor/committor_model.py}{\texttt{committor\_model.py}}.
+
+\subsubsection{Boundary conditions}
+
+While we could enforce the boundary conditions in our loss function,
+in this case it is possible (and therefore preferable) to enforce them analytically.
+
+We will train a model \(\network\) such that 
+\begin{equation}\label{eq:committor_bc_model}
+  q(x) = (1 - \chi_A(x)) ((1 - \chi_B(x)) \network(x; \theta) + \chi_B(x))
+\end{equation}
+where \(\chi_A\) and \(\chi_B\) are smoothed approximations to the indicator functions of \(A\) and \(B\) respectively \cite{li2019, cameron_nns4pdes}.
+This frees the model from having to learn the boundary conditions, 
+and should lead to easier and more accurate training.
+In the case of the rugged Mueller problem described in \cite{yuan2024},
+\(A = B_r(a)\) and \(B=B_r(b)\), so I choose to implement these as
+\begin{equation}
+  \chi_A(x) = \frac12 - \frac12 \tanh\left(
+    \frac{2 \alpha}{2 r w + w^2} \abs{x - a}^2 - \alpha - \frac{2 \alpha r^2}{2 r w + w^2}
+  \right)
+\end{equation}
+where \(\alpha\) is some value beyond which \(s(x) = \frac12 - \frac12 \tanh(x)\) is ``essentially zero'' or ``essentially one'' (\(\alpha = 4\) in my implementation)
+and \(w\) is the width of the transition region. 
+Thus if \(\abs{x-a} = r\) then \(\chi_A(x) = s(-\alpha) \approx 1\),
+and if \(\abs{x-a} = r+w\) then \(\chi_A(x) = s(\alpha) \approx 0\).
+
+
+\subsubsection{Model architecture and training}
+Both the model and training code are found in 
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/committor/committor_model.py}{\texttt{committor\_model.py}},
+and are called from
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/committor/train_model.py}{\texttt{train\_model.py}}.
+Following \cite{yuan2024},
+we use a model consisting of L linear layers of width W using \(\tanh\) activation functions,
+with the addition of the layer normalization used in \cite{face_nn_deltanet}.
+
+Training uses \eqref{eq:committor_loss} as loss, and the hyperparameters described in \autoref{tab:committor_hypeparams}.
+The loss history during the course of training is presented in \autoref{fig:committor_loss_history}.
+
+\begin{table}[htbp]
+  \centering
+  \begin{tabular}{c|l}
+    \(L\) & 5 \\
+    \(W\) & 10 \\
+    \(N_\text{epochs}\) & 400 \\
+    Batch size & 256 \\
+    Learning Rate & \(10^{-3}\) \\
+    \(\gamma\) (LR decay) & 0.5 \\
+    Decay milestones & 100, 200, 300
+  \end{tabular}
+  \caption{Hyperparameters used to train the committor model}
+  \label{tab:committor_hypeparams}
+\end{table}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/p1_training_history.eps}
+  \caption{Loss during the training process of the committor neural network. Performance on the test set plateaus completely, while training set performance continues slowly decreasing.}
+  \label{fig:committor_loss_history}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/p1_committor.png}
+  \caption{Output of the committor neural network in the first two coordinates,
+  with training points shown in red.
+  Areas outside the cloud of training points are extrapolation and cannot be trusted.
+  }
+  \label{fig:committor_output}
+\end{figure}
+
 \newpage
 \printbibliography
 
