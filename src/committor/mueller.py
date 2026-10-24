@@ -98,3 +98,15 @@ def in_B(x):
     Mask of the points of x (..., d) in the set B. Returns (...).
     '''
     return np.linalg.norm(cv(x) - CENTER_B, axis=-1) < R
+
+
+def indicators(*, r, w):
+    '''
+    Smoothed indicators (chi_A, chi_B) of the sets A and B, as torch functions
+    (..., d) -> (...) for the committor model. They are cylinders of radius r in CV
+    space, smoothed over a width w outside them (see committor_model.chi).
+    '''
+    from committor_model import chi     # torch is only needed here, not for sampling
+    chi_A= lambda x: chi(cv(x), c=CENTER_A, r=r, w=w)
+    chi_B= lambda x: chi(cv(x), c=CENTER_B, r=r, w=w)
+    return chi_A, chi_B
