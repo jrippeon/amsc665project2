@@ -273,7 +273,7 @@ the gradient is given by
   \end{aligned}
 \end{equation}
 An efficient vectorized implementation of both the potential and the gradient is given in
-\href{https://github.com/jrippeon/amsc665project2/blob/main/src/mueller.py}{\texttt{mueller.py}}.
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/committor/mueller.py}{\texttt{mueller.py}}.
 kjk
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -290,7 +290,7 @@ An Euler-Maruyama step of length \(h\) is given by
 \end{equation}
 where \(w \sim \mathcal N(0, h)\).
 This is implemented in 
-\href{https://github.com/jrippeon/amsc665project2/blob/main/src/metadynamics.py}{\texttt{metadynamics.py}},
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/committor/metadynamics.py}{\texttt{metadynamics.py}},
 as \texttt{euler\_maruyama()}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -324,9 +324,9 @@ The remaining points then constitute the training set.
 This is the approach used in \cite{make_training_data_face}.
 
 I introduce one optimization in 
-\href{https://github.com/jrippeon/amsc665project2/blob/main/src/metadynamics.py}{\texttt{metadynamics.py}},
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/committor/metadynamics.py}{\texttt{metadynamics.py}},
 and Claude helpfully introduced still greater optimization in 
-\href{https://github.com/jrippeon/amsc665project2/blob/main/src/metadynamics_optimized.py}{\texttt{metadynamics\_optimized.py}}.
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/committor/metadynamics_optimized.py}{\texttt{metadynamics\_optimized.py}}.
 This brings the runtime from the (estimated, I never actually ran it all the way) 40 minute range down to a minute or so.
 
 My contribution was to recognize that the sampling phase (longest by far) could be modified to take advantage of \texttt{numpy} vectorization,
@@ -354,7 +354,7 @@ which is significantly faster than the naive implementation.
 
 \subsubsection{Results}
 Sampling was done in 
-\href{https://github.com/jrippeon/amsc665project2/blob/main/src/generate_training_set_Yuan.py}{\texttt{generate\_training\_set\_Yuan.py}}.
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/committor/generate_training_set.py}{\texttt{generate\_training\_set.py}}.
 using the ragged Mueller potential described above,
 metadynamics with the parameter values in \autoref{tab:metadynamics_params},
 and the \(\delta\)-net to increase sparsity.
