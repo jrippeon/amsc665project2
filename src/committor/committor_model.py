@@ -34,10 +34,10 @@ def loss_fn(*, model, X, weights, create_graph=True):
     '''
     X= X.clone().requires_grad_(True)
 
-    q= model(X)                                                                     # (N,)
+    q= model(X)
 
     # [0] since torch.autograd.grad() returns other stuff we don't need
-    grad_q= torch.autograd.grad(q.sum(), X, create_graph=create_graph)[0]           # (N, d)
+    grad_q= torch.autograd.grad(q.sum(), X, create_graph=create_graph)[0]
 
     return torch.mean(weights * torch.sum(grad_q**2, dim=-1))
 
