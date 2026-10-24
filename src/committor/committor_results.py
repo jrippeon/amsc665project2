@@ -59,14 +59,19 @@ X_grid[...,1]= X2_grid
 q_grid= q(X_grid)
 V_grid= np.clip(mueller.V(X_grid), -500, 200)
 
+# away from the training points q is extrapolated, so only that region is coloured
+support_radius= 0.05    # well above the typical training point spacing (~0.006, 99th percentile ~0.02)
+in_support= validation.near_points(X_grid[..., :2], x_train[:, :2], radius=support_radius)
+q_shown= np.ma.masked_where(~in_support, q_grid)
+
 fig, ax= plt.subplots(figsize=(10, 8))
 ax.set_aspect('equal')
 ax.set(
-    title='Committor $q(x_1, x_2, 0, \\dots, 0)$',
+    title=f'Committor $q(x_1, x_2, 0, \\dots, 0)$ within {support_radius} of the training points',
     xlabel='$x_1$',
     ylabel='$x_2$',
 )
-cntrf= ax.contourf(X1_grid, X2_grid, q_grid, levels=np.linspace(0, 1, 21), cmap='viridis')
+cntrf= ax.contourf(X1_grid, X2_grid, q_shown, levels=np.linspace(0, 1, 21), cmap='viridis')
 fig.colorbar(cntrf, ax=ax, label='$q$')
 ax.contour(X1_grid, X2_grid, V_grid, levels=15, colors='gray', linewidths=1, alpha=0.75)
 for center, name in [(mueller.CENTER_A, 'A'), (mueller.CENTER_B, 'B')]:
@@ -149,15 +154,18 @@ ax.set(
     xlabel='$x_1$',
     ylabel='$x_2$',
 )
-cntrf= ax.contourf(X1_grid, X2_grid, q_grid, levels=np.linspace(0, 1, 21), cmap='viridis')
+cntrf= ax.contourf(X1_grid, X2_grid, q_shown, levels=np.linspace(0, 1, 21), cmap='viridis')
 fig.colorbar(cntrf, ax=ax, label='$q$')
 ax.contour(X1_grid, X2_grid, V_grid, levels=15, colors='gray', linewidths=1, alpha=0.75)
 for center, name in [(mueller.CENTER_A, 'A'), (mueller.CENTER_B, 'B')]:
     ax.add_patch(plt.Circle(center, mueller.R, fill=False, color='r'))
     ax.annotate(name, center, color='r', ha='center', va='center')
-ax.plot(curve[:,0], curve[:,1], 'w', lw=1.5, label='$q(x_1, x_2, 0, \\dots, 0) = 1/2$')
+# only the part of the curve in the coloured region
+curve_shown= np.where(validation.near_points(curve, x_train[:, :2], radius=support_radius)[:, None],
+                      curve, np.nan)
+ax.plot(curve_shown[:,0], curve_shown[:,1], 'w', lw=1.5, label='$q(x_1, x_2, 0, \\dots, 0) = 1/2$')
 ax.scatter(s_iso[:,0], s_iso[:,1], s=12, c='r', zorder=3, label=f'{N_iso} starting points')
-ax.legend(loc='upper right')
+ax.legend(loc='upper right', facecolor='lightgray')
 fig.savefig(figure_dir / f'{figure_prefix}_isocommittor.png', dpi=300)
 
 

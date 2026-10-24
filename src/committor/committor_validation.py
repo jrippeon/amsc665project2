@@ -117,3 +117,14 @@ def shooting_committor(points, *, M, dV, beta, h, ind_A, ind_B, rng, max_steps, 
     count_B= np.sum(hit_B, axis=-1)
 
     return count_A, count_B
+
+def near_points(s, points, *, radius):
+    '''
+    Mask of the points s that lie within radius of at least one of points, e.g. to keep
+    only the region a model was trained on.
+
+    s: (..., m). points: (n, m). Returns (...) (boolean).
+    '''
+    from scipy.spatial import cKDTree
+    dist, _= cKDTree(points).query(s, distance_upper_bound=radius)
+    return dist <= radius
