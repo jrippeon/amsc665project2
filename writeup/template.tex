@@ -290,7 +290,6 @@ the gradient is given by
 \end{equation}
 An efficient vectorized implementation of both the potential and the gradient is given in
 \href{https://github.com/jrippeon/amsc665project2/blob/main/src/committor/mueller.py}{\texttt{mueller.py}}.
-kjk
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -444,7 +443,7 @@ This frees the model from having to learn the boundary conditions,
 and should lead to easier and more accurate training.
 In the case of the rugged Mueller problem described in \cite{yuan2024},
 \(A = B_r(a)\) and \(B=B_r(b)\), so I choose to implement these as
-\begin{equation}
+\begin{equation}\label{eq:smooth_indicator}
   \chi_A(x) = \frac12 - \frac12 \tanh\left(
     \frac{2 \alpha}{2 r w + w^2} \abs{x - a}^2 - \alpha - \frac{2 \alpha r^2}{2 r w + w^2}
   \right)
@@ -484,20 +483,88 @@ The loss history during the course of training is presented in \autoref{fig:comm
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.9\textwidth]{figures/p1_training_history.eps}
+  \includegraphics[width=0.9\textwidth]{figures/p1_baseline_training_history.eps}
   \caption{Loss during the training process of the committor neural network. Performance on the test set plateaus completely, while training set performance continues slowly decreasing.}
   \label{fig:committor_loss_history}
 \end{figure}
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.9\textwidth]{figures/p1_committor.png}
+  \includegraphics[width=0.9\textwidth]{figures/p1_baseline_committor.png}
   \caption{Output of the committor neural network in the first two coordinates,
   with training points shown in red.
   Areas outside the cloud of training points are extrapolation and cannot be trusted.
   }
   \label{fig:committor_output}
 \end{figure}
+
+\subsection{Verifying the results}
+Due to the high dimensionality of the problem,
+it is not feasible to use an FEM solution to verify the model output as was the case with \cite{face_nn_deltanet}.
+Instead we use the committor analysis approach discussed in \cite{li2019,project2}.
+In this method, we extract the isocommittor surface \(q = 0.5\) in \((x_1, x_2)\) (where the interest behavior is),
+sample \(N\) points on it according to \(e^{-\beta V(x)}\).
+From these points we can launch \(M\) trajectories, and count the number that end up in both \(A\) and \(B\).
+From this we can estimate the value of the committor at each of the points,
+and plot a histogram, which should ideally be centered at 0.5.
+
+\subsubsection{Implementation}
+The necessary functions for this procedure are implemented (by Claude) in 
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/committor/committor_validation.py}{\texttt{committor\_validation.py}},
+and called in
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/committor/committor_results.py}{\texttt{committor\_results.py}},
+The procedure is conducted as follows.
+\begin{enumerate}
+  \item \texttt{committor\_results.py}:
+  The committor is evaluated on a grid in the 2-dimensional CV space,
+  giving an array of \(q(x_1, x_2, 0, \dotsc, 0)\).
+  \item \texttt{level\_curve()}: 
+  The \(q = 0.5\) level curve is extracted using \texttt{contourpy.contour\_generator()} (designed for this purpose).
+  The longest arc of the result is extracted (to avoid possible disconnected components).
+  \item \texttt{resample\_arclength()}: 
+  Convert the result from a polyline to a sequence of discrete,
+  uniformly spaced points.
+  \item \texttt{sample\_on\_curve()}:
+  Sample from these points according to \(e^{-\beta V(x)}\).
+  The results of this are shown in \autoref{fig:isocommittor_surface}.
+  \item Take these coordinates in CV space and translate them to the full 10D space.
+  Claude suggested perturbing them according to the known quadratic potential in the additional dimensions,
+  rather than simply letting \(x_3 = \dotsb = x_{10} = 0\).
+  \item \texttt{shooting\_committtor()}: Run the trajectories forward and see where they end up.
+\end{enumerate}
+
+
+The histogram in \autoref{fig:committor_histogram} shows the results of this experiment.
+The network consistently overestimates the value of the committor, 
+with the (estimated) true values on the \(\network(x; \theta) = 1/2\) surface
+lying well below \(1/2\), with remarkably little spread.
+
+This error was consistent across model parameter and hyperparameter changes.
+Regenerating a different training / test set,
+decreasing the width of \eqref{eq:smooth_indicator}, 
+and increasing the size of the network to \(5 \times 15\),
+all failed to meaningfully increase the sample mean,
+so I gave up.
+
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/p1_baseline_isocommittor.png}
+  \caption{Sampled points on the \(q=1/2\) isocommittor.
+  }
+  \label{fig:isocommittor_surface}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/p1_baseline_committor_histogram.eps}
+  \caption{Histogram of the estimated committor values of points sampled on the \(q(x) = 0.5\) surface.
+  }
+  \label{fig:committor_histogram}
+\end{figure}
+
+
+
 
 \newpage
 \printbibliography
