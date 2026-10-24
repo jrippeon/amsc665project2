@@ -1,0 +1,395 @@
+\documentclass[12pt]{article}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{enumerate}
+% \usepackage{enumitem}
+\usepackage{xfrac}
+\usepackage{xcolor}
+
+
+\usepackage[margin=1in]{geometry}
+
+% \usepackage{ulem} % for the strikethrough \sout{}
+
+\usepackage{hyperref}
+
+% this is apparently really good?
+\usepackage{mathtools}
+
+% AI generated box for the problem statement
+\usepackage[most]{tcolorbox}
+\newtcolorbox{problem}[1][]{
+    colback=gray!5!white,    % Background color: 5% gray, 95% white
+    colframe=gray!80!black,  % Border color: 80% gray, 20% black
+    fonttitle=\bfseries,     % Make the title text bold
+    title={#1},              % Use the optional argument as the title
+    arc=3pt,                 % Rounded corners (set to 0pt for sharp corners)
+    boxrule=1pt,             % Thickness of the border
+    breakable                % Allows the box to split across page boundaries
+}
+
+% this changes the footnotes to not use numbers (this is better in equations IMO,
+% doesn't look like an exponent)
+\usepackage[symbol*]{footmisc}
+\setfnsymbol{wiley}
+
+%bibliography stuff
+\usepackage[
+backend=biber,
+style=numeric,
+sorting=ynt
+]{biblatex}
+\addbibresource{bib.bib}
+
+% I use this to make the page with the table landscape mode
+\usepackage{pdflscape}
+
+% use this to wrap text nicely in columns, with the X column type
+\usepackage{tabularx}
+
+% I'm copying the textbook's notation for these things,
+% I defined them up here so I can change them as easily as possible
+% \newcommand{\R}{{\mathbf{R}}}
+% \newcommand{\Rn}[1][n]{{\mathbf{R^{#1}}}} % for some reason they bold the exponent, weird
+\newcommand{\R}{{\mathbb{R}}}
+\newcommand{\C}{{\mathbb{C}}}
+\newcommand{\D}{{\mathbb{D}}}
+\newcommand{\Hplane}{{\mathbb{H}}}
+% \newcommand{\Rn}[1][n]{{\mathbb{R}^{#1}}}
+\newcommand{\Q}{{\mathbb{Q}}}
+\newcommand{\N}{{\mathbb{N}}}
+\newcommand{\Z}{{\mathbb{Z}}}
+\newcommand{\comp}[1]{#1^C}
+
+% extended reals
+\newcommand{\ER}{[-\infty, +\infty]}
+
+% convergence in measure
+\newcommand{\tomeasure}{\overset{m}{\to}}
+
+% support
+\newcommand{\supp}{\operatorname{supp}}
+
+% indicator function
+\newcommand{\ind}[1]{\chi_{#1}}
+
+% you can change this from : to \middle\vert depending on style choices I guess
+\newcommand{\setbuild}[2]{\left\{ {#1} \; \middle\vert \; {#2} \right\}}
+
+\newcommand{\abs}[1]{\left\vert #1 \right\vert}
+\newcommand{\norm}[1]{\left\| #1 \right\|}
+\newcommand{\vect}[1]{\mathbf{{#1}}}
+\newcommand{\diag}{\operatorname{diag}}
+
+\newcommand{\measure}[1]{\left\vert #1 \right\vert}
+
+\newcommand{\omeasure}[1]{\abs{#1}_e}
+
+\newcommand{\closure}[1]{\overline{#1}}
+\newcommand{\interior}[1]{{#1}^\circ}
+\newcommand{\bdy}{\partial} % maybe I'll want to change this notation later
+
+\newcommand{\BV}{\operatorname{BV}}
+\newcommand{\AC}{\operatorname{AC}}
+
+\newcommand{\WeakLp}[1][p]{\operatorname{Weak} L^{#1}}
+\newcommand{\pnorm}[2][p]{\norm{#2}_{L^{#1}}}
+\newcommand{\lpnorm}[2][p]{\norm{#2}_{l^{#1}}}
+
+% we use these
+\newcommand{\upto}{\mathrel{\nearrow}}
+\newcommand{\downto}{\mathrel{\searrow}}
+
+\newcommand{\ft}[1]{\widehat{#1}}
+\newcommand{\ip}[1]{\left\langle{#1}\right\rangle}
+
+% make \iff look better
+\renewcommand{\iff}{\Leftrightarrow}
+\renewcommand{\implies}{\Rightarrow}
+\renewcommand{\impliedby}{\Leftarrow}
+
+% change the default phi and epsilon
+\renewcommand{\epsilon}{\varepsilon}
+% \renewcommand{\phi}{\varphi}
+
+% From 660
+\renewcommand{\Re}{\operatorname{Re}}
+\renewcommand{\Im}{\operatorname{Im}}
+\newcommand{\cc}[1]{\overline{#1}}
+\newcommand{\Res}{\operatorname{Res}}
+\newcommand{\coker}{\operatorname{coker}} %why was this in there lol?
+
+
+% cute
+\newcommand{\RHS}{\textrm{RHS}}
+\newcommand{\LHS}{\textrm{LHS}}
+
+
+%%% Formatting for theorems and so on
+
+% AI code
+% Define the custom theorem style
+\newtheoremstyle{ColorTheorem}% Name of the style
+  {\topsep}% Space above
+  {\topsep}% Space below
+  {\upshape}% Body font (usually italics for theorems)
+  {}% Indent amount
+  {\bfseries\color{blue}}% Theorem head font (makes "Theorem 1" blue and bold)
+  {.}% Punctuation after theorem head
+  {5pt plus 1pt minus 1pt}% Space after theorem head
+  {\thmname{#1}\thmnumber{ #2}\thmnote{ \textcolor{red}{(#3)}}}% Theorem head spec
+\newtheoremstyle{ColorDefinition}% Name of the style
+  {\topsep}% Space above
+  {\topsep}% Space below
+  {\upshape}% Body font (usually italics for theorems)
+  {}% Indent amount
+  {\bfseries\color{blue}}% Theorem head font (makes "Theorem 1" blue and bold)
+  {.}% Punctuation after theorem head
+  {5pt plus 1pt minus 1pt}% Space after theorem head
+  {\thmname{#1}\thmnumber{ #2}\thmnote{ \textcolor{red}{(#3)}}}% Theorem head spec
+
+\newtheoremstyle{ColorRemark}% Name of the style
+  {\topsep}% Space above
+  {\topsep}% Space below
+  {\upshape}% Body font (usually italics for theorems)
+  {}% Indent amount
+  {\bfseries\color{black}}% Theorem head font (makes "Theorem 1" blue and bold)
+  {.}% Punctuation after theorem head
+  {5pt plus 1pt minus 1pt}% Space after theorem head
+  {\thmname{#1}\thmnumber{ #2}\thmnote{ \textcolor{red}{(#3)}}}% Theorem head spec
+
+\theoremstyle{ColorTheorem}
+\newtheorem{theorem}{Theorem}
+\providecommand*\lemmaautorefname{Theorem}
+\numberwithin{theorem}{section}
+\newtheorem{corollary}{Corollary}
+\providecommand*\lemmaautorefname{Corollary}
+\numberwithin{corollary}{section}
+\newtheorem{proposition}[theorem]{Proposition}
+\providecommand*\lemmaautorefname{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\providecommand*\lemmaautorefname{Lemma}
+
+\theoremstyle{ColorDefinition}
+\newtheorem{definition}{Definition}[section]
+\theoremstyle{definition}
+
+\theoremstyle{ColorRemark}
+\newtheorem*{remark}{Remark}
+
+% \renewcommand{\thesection}{(\arabic{section})}
+% reset the section numbering in the second part
+\makeatletter
+\@addtoreset{section}{part}
+\makeatother
+
+% \author{Joshua Rippeon}
+% \title{Key Information}
+% \date{May 10, 2026}
+
+% % Wheeden and Zygmund use this convention
+% \renewcommand{\setminus}{-}
+
+% use section numbers for equations
+\numberwithin{equation}{section}
+
+% use this to number a specific line in an align
+\newcommand\numberthis{\addtocounter{equation}{1}\tag{\theequation}}
+
+% allows align* and similar to cross page boundaries
+\allowdisplaybreaks
+
+% \includeonly{
+%   wzch2.tex
+% }
+
+% % emulate the typesetting from the 1979 printing of Ahlfors (good vibes)
+% \usepackage{mlmodern}
+
+\title{AMSC665 Project 2}
+\author{Joshua Rippeon}
+
+\begin{document}
+
+\maketitle
+
+
+\tableofcontents
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Variational neural network for the committor problem.}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Rugged Mueller potential}
+The rugged Mueller potential is a 10D variant of the Mueller potential, a common 2D test problem.
+As described in \cite{yuan2024}, the potential is given by
+
+\begin{equation}\label{eq:ruggedmuellerpot}
+  V(x) = V_0(x_1, x_2) + \gamma \sin(2 k \pi x_1) \sin(2 k \pi x_2) + \frac{1}{\sigma^2} \sum_{i=3}^{10} x_i^2
+\end{equation}
+where \(x \in \R^{10}\), and 
+\begin{equation}\label{eq:muellerpot}
+  V_0(x_1, x_2)  = \sum_{i=1}^4 D_i \exp\left(a_i (x_1 - X_i)^2 + b_i (x_1 - X_i)(x_2-Y_i) + c_i (x_2 - Y_i)^2\right)
+\end{equation}
+Parameter values are taken from \cite{yuan2024}, and are given in Table~\ref{tab:muellerparams}.
+\begin{table}[htbp]
+  \centering
+  \caption{Parameters of the rugged Mueller potential \eqref{eq:ruggedmuellerpot}--\eqref{eq:muellerpot}.}
+  \label{tab:muellerparams}
+  \begin{tabular}{c|rrrr}
+    \(i\) & 1 & 2 & 3 & 4 \\
+    \hline
+    \(a_i\) & \(-1\)   & \(-1\)   & \(-6.5\) & \(0.7\) \\
+    \(b_i\) & \(0\)    & \(0\)    & \(11\)   & \(0.6\) \\
+    \(c_i\) & \(-10\)  & \(-10\)  & \(-6.5\) & \(0.7\) \\
+    \(D_i\) & \(-200\) & \(-100\) & \(-170\) & \(15\)  \\
+    \(X_i\) & \(1\)    & \(0\)    & \(-0.5\) & \(-1\)  \\
+    \(Y_i\) & \(0\)    & \(0.5\)  & \(1.5\)  & \(1\)   \\
+    \hline
+    \multicolumn{5}{c}{\(\gamma = 9, \quad k = 5, \quad \sigma = 0.05\)}
+  \end{tabular}
+\end{table}
+The metadynamics algorithm additionally requires the gradient of the potential.
+Letting 
+\begin{equation}
+  \begin{aligned}
+    \delta X_j &= (x_1 - X_j), \\
+    \qquad \delta Y_j &= (x_2 - Y_j),\\
+    \qquad S_j &= a_j (\delta X_j)^2 + b_j (\delta X_j)(\delta Y_j) + c_j(\delta Y_j)^2
+  \end{aligned}
+\end{equation}
+the gradient is given by
+\begin{equation}\label{eq:grad_mueller_potential}
+  \begin{aligned}
+    (\nabla V(x))_1 &= 
+      \sum_{j=1}^4 \Big( D_j \exp(S_j) \left(2 a_j (\delta X_j) + b_j (\delta Y_j)\right) \Big)
+      + \gamma 2 \pi k \cos(2k \pi x_1) \sin(2 k \pi x_2)\\
+    (\nabla V(x))_2 &= 
+      \sum_{j=1}^4 \Big( D_j \exp(S_j) \left(b_j (\delta X_j) + 2 c_j (\delta Y_j)\right) \Big)
+      + \gamma 2 \pi k \sin(2k \pi x_1) \cos(2 k \pi x_2)\\
+    (\nabla V(x))_i &= \frac{2}{\sigma^2} x_i \qquad \text{for } i \ge 3
+  \end{aligned}
+\end{equation}
+An efficient vectorized implementation of both the potential and the gradient is given in
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/mueller.py}{\texttt{mueller.py}}.
+kjk
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Euler-Maruyama simulation}
+In the metadynamics algorithm (as described in \cite{make_training_data_face}),
+the Euler-Maruyama algorithm is used to simulate overdamped Langevin dynamics, given by
+\begin{equation}\label{eq:overdamped_langevin}
+  dx(t) = - \nabla V(x(t)) \, dt + \sqrt{2 \beta^{-1}} dw(t)
+\end{equation}
+An Euler-Maruyama step of length \(h\) is given by
+\begin{equation}\label{eq:overdamped_langevin_euler_maruyama}
+  x_{n+1} = x_n - \nabla V(x_n) h + \sqrt{2 \beta^{-1}} w
+\end{equation}
+where \(w \sim \mathcal N(0, h)\).
+This is implemented in 
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/metadynamics.py}{\texttt{metadynamics.py}},
+as \texttt{euler\_maruyama()}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Metadynamics sampling}
+\subsubsection{Implementation}
+In the metadynamics sampling algorithm,
+we aim to sample points more uniformly than we would by simply running the dynamics forward in time.
+It consists of a deposition phase, and a sampling phase.
+
+In the deposition phase (\texttt{metadynamics\_deposition()}),
+we send an Euler-Maruyama trajectory through the potential landscape,
+periodically depositing Guassian ``bumps''.
+These fill potential wells, flattening the landscape and allowing more uniform sampling.
+
+These Gaussian ``bumps'' live in a lower-dimensional space of ``collective variables''.
+We consider a map \(\xi : \R^d \to \R^m\) to the space of collective variables,
+and let 
+\begin{equation}
+  B_k(x) = h_k \exp \left(-\frac{\abs{\xi(x)- \xi(x_k)}^2}{2 \sigma^2}\right)
+\end{equation}
+where \(h_k\) is the height of the \(k\)-th bump (constant in our case).
+
+Once the potential landscape is flattened in this way, 
+we begin the sampling phase (\texttt{metadynamics\_sampling()}).
+To sample, we run more Euler-Maruyama trajectories, 
+collecting a point every \(N_\text{skip}\) steps. 
+This set of points is then thinned using the \(\delta\)-net algorithm,
+which basically consists of iterating through the points in order and at each step deleting all points with distance \(\delta\) of the point under consideration.
+The remaining points then constitute the training set.
+This is the approach used in \cite{make_training_data_face}.
+
+I introduce one optimization in 
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/metadynamics.py}{\texttt{metadynamics.py}},
+and Claude helpfully introduced still greater optimization in 
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/metadynamics_optimized.py}{\texttt{metadynamics\_optimized.py}}.
+This brings the runtime from the (estimated, I never actually ran it all the way) 40 minute range down to a minute or so.
+
+My contribution was to recognize that the sampling phase (longest by far) could be modified to take advantage of \texttt{numpy} vectorization,
+running a large number of Euler-Maruyama trajectories forward simultaneously.
+This doesn't technically match the reference implementation, but it's cheap to implement so I did it.
+As long as the total amount of time which passes is long I don't think it will result in large differences in the sample. 
+
+Claude's contribution was to precompute the gradient contribution from the bumps on a uniform grid in collective variable space,
+and determine the gradient during sampling by linear interpolation.
+This is not too expensive, because the bumps are in the two dimensional collective variable space,
+rather than the full 10 dimensional space.
+The gradient is given by
+\begin{equation}
+  -\nabla (V(x_n) + \sum_{j=1}^{N_\text{bumps}}) B_j
+\end{equation}
+and must be computed at each Euler-Maruyama step.
+This change replaces a sum of length \(N_\text{bumps}\), by a single linear interpolation.
+
+An obvious optimization to the \(\delta\)-net algorithm is to use a KD tree.
+This is a data structure which partitions \(k\)-dimensional space (in this case the 2-dimensional CV space),
+repeatedly in a tree structure.
+Nearest neighbor search is then extremely fast.
+Claude's implementation uses \texttt{scipy.spacial.cKDTree.query\_ball\_point()},
+which is significantly faster than the naive implementation.
+
+\subsubsection{Results}
+Sampling was done in 
+\href{https://github.com/jrippeon/amsc665project2/blob/main/src/generate_training_set_Yuan.py}{\texttt{generate\_training\_set\_Yuan.py}}.
+using the ragged Mueller potential described above,
+metadynamics with the parameter values in \autoref{tab:metadynamics_params},
+and the \(\delta\)-net to increase sparsity.
+This produced 62795 points, the first two coordinates of which are visualized in \autoref{fig:q1_sample_points}.
+
+\begin{table}[htbp]
+  \centering
+  \begin{tabular}{c |  r | l}
+    Parameter & Value & Note\\
+    \hline
+    \(N_\text{skip}\)  & \(500\) & For deposition\\
+    \(N_\text{bumps}\) & \(2000\) \\
+    \(h_k\)  & \(5\) & bump height\\
+    \(\sigma\) & \(0.05\) \\
+    \(h\)  & \(10^{-5}\) & Euler-Maruyama timestep\\
+    \(\beta\) & \(0.1\) \\
+    \(N_\text{skip}\) & \(100\) & For sampling \\
+    \(N_\text{samples}\) & \(2.1 \times 10^{5}\) \\
+    \(N_\text{walkers}\) & \(100\)
+  \end{tabular}
+  \caption{Metadynamics parameters used to generate the training data.
+  Largely identical to those used in \cite{yuan2024}.}
+  \label{tab:metadynamics_params}
+\end{table}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/p1_sample_points.png}
+  \caption{
+    Sample points produced by the metadynamics sampling algorithm,
+    projected into the \(x_1\)-\(x_2\) plane.
+    Contours of the potential function \(V\) are shown.
+  }\label{fig:q1_sample_points}
+\end{figure}
+\newpage
+\printbibliography
+
+\end{document}
