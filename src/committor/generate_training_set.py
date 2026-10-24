@@ -1,11 +1,16 @@
 import numpy as np
 import metadynamics_optimized as md
 import mueller
+from pathlib import Path
+
+ROOT= Path(__file__).resolve().parents[2]
 
 SEED= 31415926535897932384626433
 rng= np.random.default_rng(SEED)
-prefix= f'data/committor/training_data_{SEED}'
-filename= f'{prefix}.npy'
+data_dir= ROOT / 'data' / 'committor'
+data_dir.mkdir(parents=True, exist_ok=True)
+prefix= f'training_data_{SEED}'
+filename= data_dir / f'{prefix}.npy'
 
 
 
@@ -18,7 +23,7 @@ _,x_centers= md.metadynamics_deposition(dV=mueller.dV,
                                       **mueller.PARAMS
                                       )
 # save intermediate results, so a later failure doesn't lose them
-np.save(f'{prefix}_centers.npy', x_centers)
+np.save(data_dir / f'{prefix}_centers.npy', x_centers)
 
 # sample from the new distribution
 N_walkers= 100
@@ -35,7 +40,7 @@ x= md.metadynamics_sampling(N_samples=210_000,
                             N_walkers=N_walkers,
                             **mueller.PARAMS
                            )
-np.save(f'{prefix}_samples.npy', x)
+np.save(data_dir / f'{prefix}_samples.npy', x)
 
 # the variational loss is over the complement of A and B, so drop points inside them
 x= x[~(mueller.in_A(x) | mueller.in_B(x))]

@@ -1,8 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mueller import V
+from pathlib import Path
 
-x= np.load('data/committor/training_data_31415926535897932384626433.npy')
+ROOT= Path(__file__).resolve().parents[2]
+
+x= np.load(ROOT / 'data' / 'committor' / 'training_data_31415926535897932384626433.npy')
 padding=0.25
 
 xmin= x[:,0].min()-padding
@@ -36,4 +39,4 @@ ax.scatter(x[:,0], x[:,1], s=3, c='k', alpha=0.1)
 cntr= ax.contour(X_grid[...,0], X_grid[...,1], V_grid, levels=15)
 fig.colorbar(cntr, ax=ax)
 
-fig.savefig('writeup/figures/p1_sample_points.png')
+fig.savefig(ROOT / 'writeup' / 'figures' / 'p1_sample_points.png')
